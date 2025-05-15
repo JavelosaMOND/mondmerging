@@ -414,6 +414,10 @@
                             <i class="fas fa-exclamation-circle"></i>
                             Overdue Reports
                         </a>
+                        <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#profileModal">
+                            <i class="fas fa-user-cog"></i>
+                            Profile
+                        </a>
                         <form action="{{ route('logout') }}" method="POST" class="mt-4">
                             @csrf
                             <button type="submit" class="nav-link text-danger w-100 text-start border-0 bg-transparent">
@@ -437,5 +441,82 @@
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="profileModalLabel">Profile Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="text" class="form-control" value="{{ auth()->user()->email }}" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <input type="text" class="form-control" value="{{ ucfirst(auth()->user()->role) }}" readonly>
+            </div>
+            @if(auth()->user()->role === 'barangay' && auth()->user()->cluster)
+            <div class="mb-3">
+              <label class="form-label">Cluster</label>
+              <input type="text" class="form-control" value="{{ auth()->user()->cluster->name }}" readonly>
+            </div>
+            @endif
+            <hr>
+            <h6>Change Password</h6>
+            <form id="changePasswordForm">
+              @csrf
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" name="current_password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" name="new_password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" name="new_password_confirmation" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Save</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    $(function() {
+        $('#changePasswordForm').on('submit', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var data = form.serialize();
+            $.ajax({
+                url: '{{ route('barangay.change-password') }}',
+                method: 'POST',
+                data: data,
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(response) {
+                    Swal.fire('Success', response.message, 'success');
+                    form[0].reset();
+                },
+                error: function(xhr) {
+                    let msg = 'An error occurred.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        });
+    });
+    </script>
 </body>
 </html>

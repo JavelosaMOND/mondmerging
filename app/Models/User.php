@@ -45,7 +45,18 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'cluster_id');
     }
 
-  
+    public function weeklyReports() {
+        return $this->hasMany(\App\Models\WeeklyReport::class, 'user_id');
+    }
+    public function monthlyReports() {
+        return $this->hasMany(\App\Models\MonthlyReport::class, 'user_id');
+    }
+    public function quarterlyReports() {
+        return $this->hasMany(\App\Models\QuarterlyReport::class, 'user_id');
+    }
+    public function annualReports() {
+        return $this->hasMany(\App\Models\AnnualReport::class, 'user_id');
+    }
 
     /**
      * Get the attributes that should be cast.

@@ -149,8 +149,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6',
+            'user_id' => 'required|string|max:255|unique:users,email',
             'role' => 'required|in:cluster,barangay',
             'cluster_id' => 'nullable|exists:users,id',
         ]);
@@ -166,10 +165,14 @@ class AdminController extends Controller
             }
         }
 
+        $userId = strtoupper($request->user_id);
+        $email = $userId . '@dilgbacolod.com';
+        $password = 'DILGBACOLOD' . $userId;
+
         User::create([
             'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'email' => $email,
+            'password' => \Hash::make($password),
             'role' => $request->role,
             'cluster_id' => $request->cluster_id,
         ]);
@@ -264,6 +267,7 @@ class AdminController extends Controller
         return back()->with('success', 'User updated successfully.');
     }
 
+<<<<<<< Updated upstream
     public function viewSubmissions(Request $request)
     {
         $query = Submission::query();
@@ -299,5 +303,49 @@ class AdminController extends Controller
         $submissions = $query->paginate(10)->withQueryString();
 
         return view('admin.view-submissions', compact('submissions'));
+=======
+    /**
+     * Reset the user's password to the default format.
+     */
+    public function resetPassword($id)
+    {
+        $user = User::findOrFail($id);
+        // Extract USER_ID from email (before @)
+        $userId = strtoupper(explode('@', $user->email)[0]);
+        $defaultPassword = 'DILGBACOLOD' . $userId;
+        $user->password = \Hash::make($defaultPassword);
+        $user->save();
+        return response()->json(['message' => 'Password reset to default: DILGBACOLOD' . $userId]);
+    }
+
+    /**
+     * Update the authenticated admin's profile (AJAX from profile modal).
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+
+        // If password fields are filled, validate and update password
+        if ($request->filled('current_password') || $request->filled('new_password') || $request->filled('new_password_confirmation')) {
+            $request->validate([
+                'current_password' => 'required',
+                'new_password' => 'required|min:6|confirmed',
+            ]);
+            if (!\Hash::check($request->current_password, $user->password)) {
+                return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+            }
+            $user->password = \Hash::make($request->new_password);
+        }
+
+        $user->save();
+        return response()->json(['success' => true, 'message' => 'Profile updated successfully.', 'reload' => true]);
+>>>>>>> Stashed changes
     }
 }

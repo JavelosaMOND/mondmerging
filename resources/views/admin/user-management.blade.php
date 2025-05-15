@@ -126,12 +126,9 @@
                         <input type="text" class="form-control" name="name" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" required>
+                        <label class="form-label">User ID</label>
+                        <input type="text" class="form-control" name="user_id" required placeholder="e.g. BARANGAY19">
+                        <div class="form-text">This will be used as the login username. Default password will be DILGBACOLOD + User ID.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Role</label>
@@ -145,8 +142,8 @@
                         <label class="form-label">Assign to Cluster</label>
                         <select class="form-select" name="cluster_id">
                             <option value="">Select Cluster</option>
-                            @foreach($users->where('role', 'cluster') as $cluster)
-                                <option value="{{ $cluster->id }}">{{ $cluster->name }}</option>
+                            @foreach($users->where('role', 'cluster')->values() as $index => $cluster)
+                                <option value="{{ $cluster->id }}">Cluster {{ $index + 1 }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -181,8 +178,8 @@
                         <input type="email" class="form-control" name="email" id="editEmail" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Password (leave blank to keep current)</label>
-                        <input type="password" class="form-control" name="password">
+                        <button type="button" class="btn btn-warning" id="resetPasswordBtn" style="width:100%">Reset to Default Password</button>
+                        <div class="form-text">Default password will be DILGBACOLOD + User ID (uppercase).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Role</label>
@@ -195,8 +192,8 @@
                         <label class="form-label">Assign to Cluster</label>
                         <select class="form-select" name="cluster_id" id="editClusterSelect">
                             <option value="">Select Cluster</option>
-                            @foreach($users->where('role', 'cluster') as $cluster)
-                                <option value="{{ $cluster->id }}">{{ $cluster->name }}</option>
+                            @foreach($users->where('role', 'cluster')->values() as $index => $cluster)
+                                <option value="{{ $cluster->id }}">Cluster {{ $index + 1 }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -280,7 +277,7 @@
     // Role selection handling
     document.getElementById('roleSelect').addEventListener('change', function() {
         const clusterContainer = document.getElementById('clusterSelectContainer');
-        clusterContainer.style.display = this.value === 'barangay' ? 'block' : 'none';
+        clusterContainer.style.display = (this.value === 'barangay' || this.value === 'cluster') ? 'block' : 'none';
     });
 
     // Edit user modal handling
@@ -297,10 +294,14 @@
         const clusterContainer = document.getElementById('editClusterSelectContainer');
         const clusterSelect = document.getElementById('editClusterSelect');
 
-        clusterContainer.style.display = user.role === 'barangay' ? 'block' : 'none';
-        if (user.cluster_id) {
-            clusterSelect.value = user.cluster_id;
-        }
+        clusterContainer.style.display = (user.role === 'barangay' || user.role === 'cluster') ? 'block' : 'none';
+        Array.from(clusterSelect.options).forEach(option => {
+            option.disabled = false;
+            if (user.role === 'cluster' && option.value == user.id) {
+                option.disabled = true;
+            }
+        });
+        clusterSelect.value = user.cluster_id || '';
     });
 
     // Status change confirmation
@@ -314,6 +315,30 @@
 
         new bootstrap.Modal(modal).show();
     }
+
+    // Reset to Default Password AJAX
+    document.getElementById('resetPasswordBtn').addEventListener('click', function() {
+        const form = document.getElementById('editUserForm');
+        const action = form.action;
+        // Extract user ID from action URL
+        const userId = action.match(/\/(\d+)$/)[1];
+        fetch(`/admin/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message || 'Password reset to default!');
+        })
+        .catch(() => {
+            alert('Failed to reset password.');
+        });
+    });
 </script>
 @endpush
 @endsection

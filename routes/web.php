@@ -38,6 +38,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{id}', [AdminController::class, 'update'])->name('users.update');
         Route::delete('/users/{id}', [AdminController::class, 'destroy'])->name('users.destroy');
         Route::get('/users/{id}/confirm-deactivation', [AdminController::class, 'confirmDeactivation'])->name('confirm-deactivation');
+        Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword'])->name('users.reset-password');
+        Route::post('/profile/update', [AdminController::class, 'updateProfile'])->name('profile.update');
 
         // Report Management
         Route::get('/view-submissions', [ReportController::class, 'index'])->name('view.submissions');
@@ -63,11 +65,40 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/submissions', [BarangayController::class, 'submissions'])->name('submissions');
         Route::get('/view-reports', [BarangayController::class, 'viewReports'])->name('view-reports');
         Route::get('/overdue-reports', [BarangayController::class, 'overdueReports'])->name('overdue-reports');
+<<<<<<< Updated upstream
         Route::post('/submissions/{id}/resubmit', [BarangayController::class, 'resubmit'])->name('submissions.resubmit');
+=======
+        Route::post('/submissions/resubmit', [BarangayController::class, 'resubmit'])->name('submissions.resubmit');
+        Route::post('/change-password', [BarangayController::class, 'changePassword'])->name('change-password');
+>>>>>>> Stashed changes
 
         // File Management
         Route::get('/files/{id}', [ReportController::class, 'downloadFile'])->name('files.download');
         Route::delete('/files/{id}', [BarangayFileController::class, 'destroy'])->name('files.destroy');
+    });
+
+    // Cluster Routes
+    Route::prefix('cluster')->name('cluster.')->middleware(['auth', 'role:cluster'])->group(function () {
+        // Dashboard
+        Route::get('/', [ClusterController::class, 'index'])->name('index');
+        Route::get('/dashboard', [ClusterController::class, 'dashboard'])->name('dashboard');
+
+        // Barangays
+        Route::get('/barangays', [ClusterController::class, 'barangays'])->name('barangays');
+        Route::get('/barangays/{id}', [ClusterController::class, 'showBarangay'])->name('barangays.show');
+
+        // Reports
+        Route::get('/reports', [ClusterController::class, 'reports'])->name('reports');
+        Route::get('/reports/{id}', [ClusterController::class, 'showReport'])->name('reports.show');
+        Route::put('/reports/{id}', [ClusterController::class, 'updateReport'])->name('reports.update');
+        Route::get('/files/{id}/download', [ClusterController::class, 'downloadFile'])->name('files.download');
+        Route::get('/files/{id}/view', [ClusterController::class, 'viewFile'])->name('files.view');
+
+        // Report Types
+        Route::get('/report-types', [ClusterController::class, 'reportTypes'])->name('report-types');
+        Route::post('/report-types', [ClusterController::class, 'storeReportType'])->name('report-types.store');
+        Route::put('/report-types/{id}', [ClusterController::class, 'updateReportType'])->name('report-types.update');
+        Route::delete('/report-types/{id}', [ClusterController::class, 'destroyReportType'])->name('report-types.destroy');
     });
 });
 

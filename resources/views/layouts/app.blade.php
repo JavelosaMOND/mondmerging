@@ -202,17 +202,52 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    @if(auth()->user()->role === 'admin')
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('admin.create-report') }}">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Create Report Type
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('admin.store-report') }}">
+                                <i class="fas fa-upload me-2"></i>
+                                Submit Report Type
+                            </a>
+                        </li>
+                    @elseif(auth()->user()->role === 'cluster')
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('cluster.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('cluster.barangays') }}">
+                                <i class="fas fa-building me-2"></i>
+                                Barangays
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('cluster.reports') }}">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Reports
+                            </a>
+                        </li>
+                    @endif
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('admin.create-report') }}">
-                            <i class="fas fa-file-alt me-2"></i>
-                            Create Report Type
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">
+                            <i class="fas fa-user-cog me-2"></i> Profile
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('admin.store-report') }}">
-                            <i class="fas fa-upload me-2"></i>
-                            Submit Report Type
-                        </a>
+                        <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="nav-link border-0 bg-transparent">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Logout
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -230,5 +265,78 @@
     <!-- Custom Scripts -->
     <script src="{{ asset('js/app.js') }}"></script>
     @stack('scripts')
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="profileModalLabel">Profile Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="adminProfileForm">
+              @csrf
+              <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" name="name" value="{{ auth()->user()->name }}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="{{ auth()->user()->email }}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Role</label>
+                <input type="text" class="form-control" value="{{ ucfirst(auth()->user()->role) }}" readonly>
+              </div>
+              <hr>
+              <h6>Change Password</h6>
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" name="current_password">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" name="new_password">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" name="new_password_confirmation">
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    $(function() {
+        $('#adminProfileForm').on('submit', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var data = form.serialize();
+            $.ajax({
+                url: '/admin/profile/update',
+                method: 'POST',
+                data: data,
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(response) {
+                    Swal.fire('Success', response.message, 'success');
+                    if (response.reload) {
+                        setTimeout(function() { location.reload(); }, 1000);
+                    }
+                },
+                error: function(xhr) {
+                    let msg = 'An error occurred.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        });
+    });
+    </script>
 </body>
 </html>

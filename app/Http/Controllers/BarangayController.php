@@ -751,4 +751,25 @@ class BarangayController extends Controller
             return back()->with('error', 'Failed to resubmit report. Please try again.');
         }
     }
+
+    /**
+     * Change the authenticated user's password (profile modal).
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:6|confirmed',
+        ]);
+
+        $user = auth()->user();
+        if (!\Hash::check($request->current_password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->password = \Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+    }
 }

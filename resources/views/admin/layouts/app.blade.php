@@ -343,6 +343,9 @@
                     <a class="nav-link {{ request()->routeIs('admin.user-management') ? 'active' : '' }}" href="{{ route('admin.user-management') }}">
                         <i class="fas fa-users"></i> User Management
                     </a>
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">
+                        <i class="fas fa-user-cog"></i> Profile
+                    </a>
                     <a class="nav-link" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
@@ -369,6 +372,77 @@
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             }
         });
+    </script>
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="profileModalLabel">Profile Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="adminProfileForm">
+              @csrf
+              <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" name="name" value="{{ auth()->user()->name }}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="{{ auth()->user()->email }}" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Role</label>
+                <input type="text" class="form-control" value="{{ ucfirst(auth()->user()->role) }}" readonly>
+              </div>
+              <hr>
+              <h6>Change Password</h6>
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" name="current_password">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" name="new_password">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" name="new_password_confirmation">
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    $(function() {
+        $('#adminProfileForm').on('submit', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var data = form.serialize();
+            $.ajax({
+                url: '/admin/profile/update',
+                method: 'POST',
+                data: data,
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(response) {
+                    Swal.fire('Success', response.message, 'success');
+                    if (response.reload) {
+                        setTimeout(function() { location.reload(); }, 1000);
+                    }
+                },
+                error: function(xhr) {
+                    let msg = 'An error occurred.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        });
+    });
     </script>
     @stack('scripts')
 </body>
