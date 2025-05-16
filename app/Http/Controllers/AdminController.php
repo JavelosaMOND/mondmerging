@@ -12,6 +12,7 @@ use App\Models\QuarterlyReport;
 use App\Models\AnnualReport;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Submission;
 
 class AdminController extends Controller
 {
@@ -267,7 +268,6 @@ class AdminController extends Controller
         return back()->with('success', 'User updated successfully.');
     }
 
-<<<<<<< Updated upstream
     public function viewSubmissions(Request $request)
     {
         $query = Submission::query();
@@ -303,7 +303,8 @@ class AdminController extends Controller
         $submissions = $query->paginate(10)->withQueryString();
 
         return view('admin.view-submissions', compact('submissions'));
-=======
+    }
+
     /**
      * Reset the user's password to the default format.
      */
@@ -346,6 +347,5 @@ class AdminController extends Controller
 
         $user->save();
         return response()->json(['success' => true, 'message' => 'Profile updated successfully.', 'reload' => true]);
->>>>>>> Stashed changes
     }
 }

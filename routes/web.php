@@ -65,12 +65,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/submissions', [BarangayController::class, 'submissions'])->name('submissions');
         Route::get('/view-reports', [BarangayController::class, 'viewReports'])->name('view-reports');
         Route::get('/overdue-reports', [BarangayController::class, 'overdueReports'])->name('overdue-reports');
-<<<<<<< Updated upstream
         Route::post('/submissions/{id}/resubmit', [BarangayController::class, 'resubmit'])->name('submissions.resubmit');
-=======
-        Route::post('/submissions/resubmit', [BarangayController::class, 'resubmit'])->name('submissions.resubmit');
         Route::post('/change-password', [BarangayController::class, 'changePassword'])->name('change-password');
->>>>>>> Stashed changes
 
         // File Management
         Route::get('/files/{id}', [ReportController::class, 'downloadFile'])->name('files.download');
