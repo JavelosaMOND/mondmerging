@@ -1,0 +1,32 @@
+[33m3bc5210[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mrecreate_status[m[33m)[m error ni ha
+[33m9f16164[m fixed search and filter view submissions
+[33m69c0395[m Recreated_status
+[33m063fb06[m[33m ([m[1;32mtry_report_form[m[33m, [m[1;32mrecreate_submission_status[m[33m, [m[1;32mcreate-resubmission[m[33m, [m[1;32mcreate-pagination[m[33m)[m added pagination to create-report
+[33mfe9848e[m[33m ([m[1;31morigin/try_report_form[m[33m, [m[1;32mfix-submit-report[m[33m)[m fixed submit report
+[33md9849fd[m fixed routes for admin and barangay
+[33m762a54d[m admin dashboard fixed
+[33m4a05c43[m[33m ([m[1;32mrecreate_dashboard[m[33m)[m recreated admin dashboard
+[33meff8b07[m Recreated Admin Page
+[33mf427cba[m[33m ([m[1;32mtry-new-design[m[33m)[m admin-new-design
+[33m3666760[m working barangay blade s
+[33mb280b7e[m[33m ([m[1;32mcss-for-barangay[m[33m)[m added css for barangay with errors
+[33m3928c0b[m admin css draft
+[33me08dd79[m Recreate submissions for barangay users
+[33md644688[m Revert "Display Remarks based on time submission"
+[33mbe1ee34[m Revert "view all submitted reports (admin)"
+[33m3943ca3[m wala ga save iban nga report types
+[33m83104c5[m Display Remarks based on time submission
+[33m0f5da93[m view all submitted reports (admin)
+[33m2407a04[m Seeded reportTypes for weekly
+[33mcb19588[m working view file barangay submission
+[33m23b51be[m view submitted reports (barangay no view file)
+[33m643e605[m working report forms
+[33m4405897[m working sometthing
+[33m7634555[m seeded account
+[33mfca1ecf[m Revert "Seeded Users Table"
+[33m5cd8ebf[m not working report form
+[33mc0c49f2[m Seeded Users Table
+[33m0a2fb43[m Restart from Scratch
+[33me9b7f8b[m create forms with view submissions
+[33m21d8cd5[m Working deactivate and reactivate acccounts
+[33ma6d4a53[m Working Admin Account Creation
