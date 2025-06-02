@@ -1,8 +1,4 @@
-<!-- @if(request()->is('facilitator/*')) -->
-    @extends('cluster.layouts.app_facilitator')
-<!-- @else
-    @extends('cluster.layouts.app')
-@endif -->
+@extends('facilitator.layouts.app')
 
 @section('title', 'Report Submissions')
 
@@ -24,7 +20,7 @@
         background-color: var(--success-light);
         color: var(--success);
     }
-    .status-badge.rejected {
+    .status-badge.resubmit {
         background-color: var(--danger-light);
         color: var(--danger);
     }
@@ -84,7 +80,7 @@
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="resubmit">Resubmit</option>
                 </select>
             </div>
             <div class="input-group" style="width: 200px;">
@@ -181,7 +177,7 @@
                                         <button type="button" class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#filePreviewModal{{ $report->id }}">
                                             <i class="fas fa-eye"></i> View File
                                         </button>
-                                        <a href="{{ route('cluster.files.download', $report->id) }}" class="btn btn-sm btn-info">
+                                        <a href="{{ route('facilitator.files.download', $report->id) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-download"></i> Download File
                                         </a>
                                     </div>
@@ -210,7 +206,7 @@
                                     @endif
                                 </div>
                                 <div class="modal-footer">
-                                    <a href="{{ route('cluster.files.download', $report->id) }}" class="btn btn-info">
+                                    <a href="{{ route('facilitator.files.download', $report->id) }}" class="btn btn-info">
                                         <i class="fas fa-download"></i> Download
                                     </a>
                                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
@@ -226,13 +222,14 @@
                                     <h5 class="modal-title"><i class="fas fa-edit me-2" style="color: var(--primary);"></i>Update Report Status</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <form id="updateForm{{ $report->id }}" action="{{ auth()->user()->role === 'Facilitator' ? route('facilitator.reports.update', $report->id) : route('cluster.reports.update', $report->id) }}" method="POST">
+                                <form id="updateForm{{ $report->id }}" action="{{ route('facilitator.reports.update', $report->id) }}" method="POST">
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-body">
                                         <div class="mb-3">
                                             <label class="form-label">Status</label>
-                                            <select class="form-select status-select" name="status" required>
+                                            <select class="form-select" name="status" required>
+                                                <option value="pending" {{ $report->status == 'pending' ? 'selected' : '' }}>Pending</option>
                                                 <option value="approved" {{ $report->status == 'approved' ? 'selected' : '' }}>Approved</option>
                                                 <option value="resubmit" {{ $report->status == 'resubmit' ? 'selected' : '' }}>Resubmit</option>
                                             </select>
@@ -240,6 +237,9 @@
                                         <div class="mb-3">
                                             <label class="form-label">Remarks</label>
                                             <textarea class="form-control" name="remarks">{{ $report->remarks }}</textarea>
+                                            <div class="invalid-feedback">
+                                                Please provide remarks when requesting resubmission.
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -252,18 +252,38 @@
                     </div>
                     <script>
                     document.addEventListener('DOMContentLoaded', function() {
-                        var statusSelect = document.querySelector('#updateReportModal{{ $report->id }} .status-select');
-                        var freqFields = document.getElementById('frequencyFields{{ $report->id }}');
-                        if (!statusSelect || !freqFields) return;
-                        function toggleFreqFields() {
+                        var statusSelect = document.querySelector('#updateReportModal{{ $report->id }} select[name="status"]');
+                        var remarksField = document.querySelector('#updateReportModal{{ $report->id }} textarea[name="remarks"]');
+                        var updateForm = document.querySelector('#updateForm{{ $report->id }}');
+                        
+                        function toggleRemarksRequired() {
                             if (statusSelect.value === 'resubmit') {
-                                freqFields.style.display = '';
+                                remarksField.setAttribute('required', 'required');
+                                remarksField.classList.add('is-invalid');
                             } else {
-                                freqFields.style.display = 'none';
+                                remarksField.removeAttribute('required');
+                                remarksField.classList.remove('is-invalid');
                             }
                         }
-                        statusSelect.addEventListener('change', toggleFreqFields);
-                        toggleFreqFields();
+                        
+                        statusSelect.addEventListener('change', toggleRemarksRequired);
+                        toggleRemarksRequired();
+
+                        // Form validation
+                        updateForm.addEventListener('submit', function(e) {
+                            if (statusSelect.value === 'resubmit' && !remarksField.value.trim()) {
+                                e.preventDefault();
+                                remarksField.classList.add('is-invalid');
+                                remarksField.focus();
+                            }
+                        });
+
+                        // Clear validation on input
+                        remarksField.addEventListener('input', function() {
+                            if (this.value.trim()) {
+                                this.classList.remove('is-invalid');
+                            }
+                        });
                     });
                     </script>
                     @empty

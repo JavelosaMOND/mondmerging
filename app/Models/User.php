@@ -12,6 +12,8 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    const ROLE_FACILITATOR = 'Facilitator';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -40,9 +42,22 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'cluster_id');
     }
 
+    // Alias for parent cluster
+    public function parentCluster()
+    {
+        return $this->belongsTo(User::class, 'cluster_id');
+    }
+
+    // Child clusters under this cluster
+    public function childClusters()
+    {
+        return $this->hasMany(User::class, 'cluster_id')->where('role', self::ROLE_FACILITATOR);
+    }
+
+    // Only barangays under this cluster
     public function barangays()
     {
-        return $this->hasMany(User::class, 'cluster_id');
+        return $this->hasMany(User::class, 'cluster_id')->where('role', 'barangay');
     }
 
     public function weeklyReports() {

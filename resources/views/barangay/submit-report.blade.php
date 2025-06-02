@@ -97,6 +97,26 @@
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label for="frequency" class="form-label fw-bold">
+                                        <i class="fas fa-tasks me-2"></i>
+                                        Frequency
+                                    </label>
+                                    <select id="frequency" class="form-select" name="frequency">
+                                        <option value="">Select Frequency</option>
+                                        @foreach($frequencies as $frequency)
+                                            <option value="{{ $frequency }}">{{ $frequency }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('frequency')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label for="report_type" class="form-label fw-bold">
                                         <i class="fas fa-tasks me-2"></i>
                                         Report Type
@@ -116,7 +136,9 @@
                                     @enderror
                                 </div>
                             </div>
+                        </div>
 
+                        <div class="row mb-4">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="file" class="form-label fw-bold">
@@ -509,6 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Disable submit button and show loading state
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+
+        // Disable the frequency and report type fields
+        const freq = form.querySelector('[name="frequency"], #frequency');
+        const reportType = form.querySelector('[name="report_type_id"], #report_type');
+        if (freq) freq.disabled = true;
+        if (reportType) reportType.disabled = true;
 
         // Let the form submit naturally
         return true;

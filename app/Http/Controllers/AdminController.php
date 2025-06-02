@@ -13,6 +13,7 @@ use App\Models\AnnualReport;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Submission;
+use App\Models\UserArchive;
 
 class AdminController extends Controller
 {
@@ -151,18 +152,18 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'user_id' => 'required|string|max:255|unique:users,email',
-            'role' => 'required|in:cluster,barangay',
+            'role' => 'required|in:Facilitator,barangay',
             'cluster_id' => 'nullable|exists:users,id',
         ]);
 
         if ($request->role === 'barangay') {
-            $clusterExists = User::where('role', 'cluster')->exists();
-            if (!$clusterExists) {
-                return back()->with('error', 'A cluster must be created before adding a barangay.');
+            $facilitatorExists = User::where('role', 'Facilitator')->exists();
+            if (!$facilitatorExists) {
+                return back()->with('error', 'A facilitator must be created before adding a barangay.');
             }
 
             if (!$request->cluster_id) {
-                return back()->with('error', 'Barangays must be assigned to a cluster.');
+                return back()->with('error', 'Barangays must be assigned to a facilitator.');
             }
         }
 
@@ -188,7 +189,7 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
 
-        if ($user->role === 'cluster') {
+        if ($user->role === 'Facilitator') {
             $barangayExists = User::where('role', 'barangay')
                 ->where('cluster_id', $user->id)
                 ->exists();
@@ -196,8 +197,8 @@ class AdminController extends Controller
             if ($barangayExists) {
                 return response()->json([
                     'confirm' => $user->is_active
-                        ? 'This cluster has assigned barangays. Are you sure you want to deactivate it?'
-                        : 'This cluster has assigned barangays. Are you sure you want to reactivate it?'
+                        ? 'This facilitator has assigned barangays. Are you sure you want to deactivate it?'
+                        : 'This facilitator has assigned barangays. Are you sure you want to reactivate it?'
                 ]);
             }
         }
@@ -215,6 +216,21 @@ class AdminController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+        
+        if ($user->is_active) {
+            // Archive the user before deactivating
+            UserArchive::create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'cluster_id' => $user->cluster_id,
+                'archived_at' => now(),
+                'archived_by' => auth()->user()->name,
+                'archive_reason' => request('archive_reason', 'No reason provided')
+            ]);
+        }
+
         $user->update(['is_active' => !$user->is_active]);
 
         return back()->with('success', ucfirst($user->role) . ' status updated to ' . ($user->is_active ? 'active' : 'inactive') . '.');
@@ -225,8 +241,9 @@ class AdminController extends Controller
      */
     public function userManagement()
     {
-        $users = User::with('cluster')->get();
-        return view('admin.user-management', compact('users'));
+        $users = User::where('is_active', true)->get();
+        $clusters = User::where('role', 'Facilitator')->where('is_active', true)->get();
+        return view('admin.user-management-facilitator', compact('users', 'clusters'));
     }
 
     /**
@@ -239,13 +256,13 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
-            'role' => 'required|in:cluster,barangay',
+            'role' => 'required|in:Facilitator,barangay',
             'cluster_id' => 'nullable|exists:users,id',
         ]);
 
         if ($request->role === 'barangay') {
             if (!$request->cluster_id) {
-                return back()->with('error', 'Barangays must be assigned to a cluster.');
+                return back()->with('error', 'Barangays must be assigned to a facilitator.');
             }
         }
 
@@ -347,5 +364,38 @@ class AdminController extends Controller
 
         $user->save();
         return response()->json(['success' => true, 'message' => 'Profile updated successfully.', 'reload' => true]);
+    }
+
+    /**
+     * Display the archived users page.
+     */
+    public function userArchives()
+    {
+        $archives = \App\Models\UserArchive::with('cluster')->orderByDesc('archived_at')->get();
+        return view('admin.user-archives', compact('archives'));
+    }
+
+    /**
+     * Return archived users as JSON for AJAX.
+     */
+    public function userArchivesJson()
+    {
+        $archives = \App\Models\UserArchive::with('cluster')->orderByDesc('archived_at')->get();
+        return response()->json($archives);
+    }
+
+    /**
+     * Unarchive (reactivate) a user from the archive.
+     */
+    public function unarchiveUser($id)
+    {
+        $archive = \App\Models\UserArchive::findOrFail($id);
+        $user = \App\Models\User::find($archive->user_id);
+        if ($user) {
+            $user->is_active = true;
+            $user->save();
+        }
+        $archive->delete();
+        return response()->json(['success' => true, 'message' => 'User reactivated successfully.']);
     }
 }

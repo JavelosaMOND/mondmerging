@@ -398,17 +398,9 @@
                             <i class="fas fa-tachometer-alt"></i>
                             Dashboard
                         </a>
-                        <a href="{{ route('barangay.submit-report') }}" class="nav-link {{ request()->routeIs('barangay.submit-report') ? 'active' : '' }}">
-                            <i class="fas fa-file-upload"></i>
-                            Submit Report
-                        </a>
                         <a href="{{ route('barangay.submissions') }}" class="nav-link {{ request()->routeIs('barangay.submissions') ? 'active' : '' }}">
                             <i class="fas fa-list"></i>
                             My Submissions
-                        </a>
-                        <a href="{{ route('barangay.view-reports') }}" class="nav-link {{ request()->routeIs('barangay.view-reports') ? 'active' : '' }}">
-                            <i class="fas fa-file-alt"></i>
-                            View Reports
                         </a>
                         <a href="{{ route('barangay.overdue-reports') }}" class="nav-link {{ request()->routeIs('barangay.overdue-reports') ? 'active' : '' }}">
                             <i class="fas fa-exclamation-circle"></i>
@@ -418,9 +410,9 @@
                             <i class="fas fa-user-cog"></i>
                             Profile
                         </a>
-                        <form action="{{ route('logout') }}" method="POST" class="mt-4">
+                        <form action="{{ route('logout') }}" method="POST" class="d-inline">
                             @csrf
-                            <button type="submit" class="nav-link text-danger w-100 text-start border-0 bg-transparent">
+                            <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
                                 <i class="fas fa-sign-out-alt"></i>
                                 Logout
                             </button>
@@ -485,6 +477,10 @@
                 <label class="form-label">Confirm New Password</label>
                 <input type="password" class="form-control" name="new_password_confirmation" required>
               </div>
+              <div class="mb-3 d-flex align-items-center">
+                <input type="text" class="form-control me-2" name="otp" placeholder="Enter OTP" required>
+                <button type="button" class="btn btn-secondary" id="requestOtpBtn">Request OTP</button>
+              </div>
               <button type="submit" class="btn btn-primary w-100">Save</button>
             </form>
           </div>
@@ -494,12 +490,27 @@
 
     <script>
     $(function() {
+        $('#requestOtpBtn').on('click', function() {
+            $.post('/request-otp', {}, function(response) {
+                let message = response.message;
+                if (response.debug_otp) {
+                    message += '<br><br><strong>Debug OTP: ' + response.debug_otp + '</strong><br><small>(This is only for development)</small>';
+                }
+                Swal.fire({
+                    title: 'OTP Sent',
+                    html: message,
+                    icon: 'success'
+                });
+            }).fail(function(xhr) {
+                Swal.fire('Error', xhr.responseJSON?.message || 'Failed to send OTP', 'error');
+            });
+        });
         $('#changePasswordForm').on('submit', function(e) {
             e.preventDefault();
             var form = $(this);
             var data = form.serialize();
             $.ajax({
-                url: '{{ route('barangay.change-password') }}',
+                url: '/verify-otp-change-password',
                 method: 'POST',
                 data: data,
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },

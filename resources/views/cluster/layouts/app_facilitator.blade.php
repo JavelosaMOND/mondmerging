@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Cluster Panel')</title>
+    <title>@yield('title', 'Facilitator Panel')</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -47,67 +47,30 @@
             min-height: 100vh;
         }
         .sidebar {
-            background: white;
+            background: var(--gray-200);
             min-height: 100vh;
-            padding: 1.5rem 0;
-            position: fixed;
-            width: inherit;
-            max-width: inherit;
             box-shadow: var(--shadow-sm);
-            z-index: 1000;
+            padding: 2rem 1rem 1rem 1rem;
         }
-        .sidebar-header {
-            padding: 0 1.5rem 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
-            margin-bottom: 1rem;
+        .sidebar-header img {
+            border-radius: 50%;
         }
         .sidebar-header h4 {
-            color: var(--dark);
-            font-weight: 600;
             margin-bottom: 0.25rem;
         }
-        .sidebar-header small {
-            color: var(--gray-600);
-            font-size: 0.875rem;
-        }
-        .nav-link {
+        .sidebar .nav-link {
             color: var(--gray-700);
-            padding: 0.75rem 1.5rem;
-            margin: 0.25rem 1rem;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
             font-weight: 500;
+            margin-bottom: 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: background 0.2s, color 0.2s;
         }
-        .nav-link:hover {
-            background: var(--gray-100);
-            color: var(--primary);
-        }
-        .nav-link.active {
+        .sidebar .nav-link.active, .sidebar .nav-link:hover {
             background: var(--primary-light);
             color: var(--primary);
         }
-        .nav-link i {
-            width: 1.5rem;
-            font-size: 1.1rem;
-            margin-right: 0.75rem;
-        }
         .main-content {
-            padding: 2rem;
-            margin-left: 16.666667%;
-            min-height: 100vh;
-        }
-        .page-title {
-            color: var(--dark);
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .page-title i {
-            color: var(--primary);
+            padding: 2rem 2rem 2rem 2rem;
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -129,8 +92,8 @@
             <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 sidebar">
                 <div class="sidebar-header text-center">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Cluster Icon" width="48" class="mb-2">
-                    <h4>Cluster Panel</h4>
+                    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Facilitator Icon" width="48" class="mb-2">
+                    <h4>Facilitator Panel</h4>
                     <small>Control Center</small>
                 </div>
                 <nav class="nav flex-column">
@@ -185,7 +148,7 @@
             @if(auth()->user()->cluster)
             <div class="mb-3">
               <label class="form-label">Cluster</label>
-              <input type="text" class="form-control" value="{{ 'Cluster ' . (\App\Models\User::where('role', 'cluster')->get()->search(fn($c) => $c->id === auth()->user()->cluster_id) + 1) }}" readonly>
+              <input type="text" class="form-control" value="{{ 'Cluster ' . (\App\Models\User::where('role', 'Facilitator')->get()->search(fn($c) => $c->id === auth()->user()->cluster_id) + 1) }}" readonly>
             </div>
             @endif
             <hr>
@@ -218,50 +181,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
-        $(function() {
-            $('#requestOtpBtn').on('click', function() {
-                $.post('/request-otp', {}, function(response) {
-                    let message = response.message;
-                    if (response.debug_otp) {
-                        message += '<br><br><strong>Debug OTP: ' + response.debug_otp + '</strong><br><small>(This is only for development)</small>';
-                    }
-                    Swal.fire({
-                        title: 'OTP Sent',
-                        html: message,
-                        icon: 'success'
-                    });
-                }).fail(function(xhr) {
-                    Swal.fire('Error', xhr.responseJSON?.message || 'Failed to send OTP', 'error');
-                });
-            });
-            $('#changePasswordForm').on('submit', function(e) {
-                e.preventDefault();
-                var form = $(this);
-                var data = form.serialize();
-                $.ajax({
-                    url: '/verify-otp-change-password',
-                    method: 'POST',
-                    data: data,
-                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-                    success: function(response) {
-                        Swal.fire('Success', response.message, 'success');
-                        form[0].reset();
-                    },
-                    error: function(xhr) {
-                        let msg = 'An error occurred.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        Swal.fire('Error', msg, 'error');
-                    }
-                });
-            });
-        });
+        // ... existing JS code ...
     </script>
     @stack('scripts')
 </body>

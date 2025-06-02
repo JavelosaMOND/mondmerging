@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -12,8 +13,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // $table->boolean('is_active')->default(1); // Commented out to avoid duplicate column error
+            // First, modify the column to be a string temporarily
+            $table->string('role')->change();
         });
+
+        // Then update the column to be an enum with the new values
+        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'cluster', 'barangay', 'Facilitator')");
     }
 
     /**
@@ -22,7 +27,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('is_active');
+            // Revert back to the original enum values
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'cluster', 'barangay')");
         });
     }
-};
+}; 

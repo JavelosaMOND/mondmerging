@@ -1,4 +1,4 @@
-@extends('cluster.layouts.app')
+@extends('cluster.layouts.app_facilitator')
 
 @section('title', 'Barangays')
 

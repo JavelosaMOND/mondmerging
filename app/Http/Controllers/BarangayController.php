@@ -55,11 +55,6 @@ class BarangayController extends Controller
                 ->concat($semestralReports)
                 ->concat($annualReports);
 
-            // Calculate statistics
-            $totalReports = $allReports->count();
-            $submittedReports = $allReports->where('status', 'submitted')->count();
-            $noSubmissionReports = $allReports->where('status', 'no submission')->count();
-
             // Get recent reports (last 5)
             $recentReports = $allReports
                 ->sortByDesc('created_at')
@@ -79,12 +74,16 @@ class BarangayController extends Controller
             $upcomingDeadlines = ReportType::where('deadline', '>=', now())
                 ->whereNotIn('id', $submittedReportTypeIds)
                 ->orderBy('deadline')
-                ->take(5)
                 ->get()
                 ->map(function ($reportType) {
                     $reportType->deadline = \Carbon\Carbon::parse($reportType->deadline);
                     return $reportType;
                 });
+
+            // Updated dashboard counts
+            $totalReports = $recentReports->count() + $upcomingDeadlines->count();
+            $noSubmissionReports = $upcomingDeadlines->count();
+            $submittedReports = $recentReports->count();
 
             return view('barangay.dashboard', compact(
                 'totalReports',
@@ -290,8 +289,7 @@ class BarangayController extends Controller
             ->unique();
 
         // Filter out already submitted report types and only show those with valid deadlines
-        $reportTypes = ReportType::where('deadline', '>=', now())
-            ->whereNotIn('id', $submittedReportTypeIds)
+        $reportTypes = ReportType::whereNotIn('id', $submittedReportTypeIds)
             ->get();
 
         // Organize submitted reports by frequency
@@ -303,11 +301,14 @@ class BarangayController extends Controller
             'annual' => $annualReports
         ];
 
+        $frequencies = ['weekly', 'monthly', 'quarterly', 'semestral', 'annual'];
+
         return view('barangay.submit-report', compact(
             'reportTypes',
             'allReportTypes',
             'submittedReportTypeIds',
-            'submittedReportsByFrequency'
+            'submittedReportsByFrequency',
+            'frequencies'
         ));
     }
 
@@ -651,10 +652,6 @@ class BarangayController extends Controller
 
     public function resubmit(Request $request, $id)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx,xlsx|max:2048'
-        ]);
-
         try {
             DB::beginTransaction();
 
@@ -714,9 +711,9 @@ class BarangayController extends Controller
                 return back()->with('error', 'Report not found');
             }
 
-            // Check if the report is rejected
-            if ($report->status !== 'rejected') {
-                return back()->with('error', 'Only rejected reports can be resubmitted');
+            // Check if the report is resubmitted
+            if ($report->status !== 'resubmit') {
+                return back()->with('error', 'Only resubmitted reports can be resubmitted');
             }
 
             // Check if the report type is still within deadline
@@ -725,6 +722,40 @@ class BarangayController extends Controller
                 return back()->with('error', 'The deadline for this report has passed');
             }
 
+            // Validation rules based on frequency
+            $validationRules = [
+                'file' => 'required|file|mimes:pdf,doc,docx,xlsx|max:2048'
+            ];
+            switch ($reportTypeModel->frequency) {
+                case 'weekly':
+                    $validationRules = array_merge($validationRules, [
+                        'month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December',
+                        'week_number' => 'required|integer|min:1|max:52',
+                        'num_of_clean_up_sites' => 'required|integer|min:0',
+                        'num_of_participants' => 'required|integer|min:0',
+                        'num_of_barangays' => 'required|integer|min:0',
+                        'total_volume' => 'required|numeric|min:0'
+                    ]);
+                    break;
+                case 'monthly':
+                    $validationRules = array_merge($validationRules, [
+                        'month' => 'required|string|in:January,February,March,April,May,June,July,August,September,October,November,December'
+                    ]);
+                    break;
+                case 'quarterly':
+                    $validationRules = array_merge($validationRules, [
+                        'quarter_number' => 'required|integer|in:1,2,3,4'
+                    ]);
+                    break;
+                case 'semestral':
+                    $validationRules = array_merge($validationRules, [
+                        'sem_number' => 'required|integer|in:1,2'
+                    ]);
+                    break;
+            }
+            $request->validate($validationRules);
+
+            // Store the new file
             $file = $request->file('file');
             $filename = time() . '_' . $file->getClientOriginalName();
             $path = $file->storeAs('reports', $filename, 'public');
@@ -734,16 +765,38 @@ class BarangayController extends Controller
                 Storage::delete('public/' . $report->file_path);
             }
 
-            $report->update([
+            // Prepare update data
+            $updateData = [
                 'file_path' => $path,
                 'file_name' => $filename,
-                'status' => 'pending',
+                'status' => 'submitted',
                 'remarks' => null,
                 'resubmitted_at' => now()
-            ]);
+            ];
+            switch ($reportTypeModel->frequency) {
+                case 'weekly':
+                    $updateData = array_merge($updateData, [
+                        'month' => $request->month,
+                        'week_number' => $request->week_number,
+                        'num_of_clean_up_sites' => $request->num_of_clean_up_sites,
+                        'num_of_participants' => $request->num_of_participants,
+                        'num_of_barangays' => $request->num_of_barangays,
+                        'total_volume' => $request->total_volume
+                    ]);
+                    break;
+                case 'monthly':
+                    $updateData['month'] = $request->month;
+                    break;
+                case 'quarterly':
+                    $updateData['quarter_number'] = $request->quarter_number;
+                    break;
+                case 'semestral':
+                    $updateData['sem_number'] = $request->sem_number;
+                    break;
+            }
+            $report->update($updateData);
 
             DB::commit();
-
             return redirect()->route('barangay.submissions')->with('success', 'Report resubmitted successfully. It will be reviewed by the admin.');
         } catch (\Exception $e) {
             DB::rollBack();

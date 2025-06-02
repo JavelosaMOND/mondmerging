@@ -346,12 +346,12 @@
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">
                         <i class="fas fa-user-cog"></i> Profile
                     </a>
-                    <a class="nav-link" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                    <form action="{{ route('logout') }}" method="POST" class="d-inline">
                         @csrf
+                        <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </button>
                     </form>
                 </nav>
             </div>
@@ -410,6 +410,10 @@
                 <label class="form-label">Confirm New Password</label>
                 <input type="password" class="form-control" name="new_password_confirmation">
               </div>
+              <div class="mb-3 d-flex align-items-center">
+                <input type="text" class="form-control me-2" name="otp" placeholder="Enter OTP" required>
+                <button type="button" class="btn btn-secondary" id="requestOtpBtn">Request OTP</button>
+              </div>
               <button type="submit" class="btn btn-primary w-100">Save Changes</button>
             </form>
           </div>
@@ -418,12 +422,27 @@
     </div>
     <script>
     $(function() {
+        $('#requestOtpBtn').on('click', function() {
+            $.post('/request-otp', {}, function(response) {
+                let message = response.message;
+                if (response.debug_otp) {
+                    message += '<br><br><strong>Debug OTP: ' + response.debug_otp + '</strong><br><small>(This is only for development)</small>';
+                }
+                Swal.fire({
+                    title: 'OTP Sent',
+                    html: message,
+                    icon: 'success'
+                });
+            }).fail(function(xhr) {
+                Swal.fire('Error', xhr.responseJSON?.message || 'Failed to send OTP', 'error');
+            });
+        });
         $('#adminProfileForm').on('submit', function(e) {
             e.preventDefault();
             var form = $(this);
             var data = form.serialize();
             $.ajax({
-                url: '/admin/profile/update',
+                url: '/verify-otp-change-password',
                 method: 'POST',
                 data: data,
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },

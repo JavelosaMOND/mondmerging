@@ -50,10 +50,7 @@
     <!-- Quick Actions -->
     <div class="row mb-4">
         <div class="col-12">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#submitReportModal">
-                <i class="fas fa-plus-circle me-2"></i>
-                Submit New Report
-            </button>
+            <!-- Remove the button or link that says 'Submit New Report' (the one that triggers the modal) from the dashboard. -->
         </div>
     </div>
 
@@ -380,7 +377,7 @@
                                 <label for="frequency_filter" class="form-label">
                                     Filter by Frequency
                                 </label>
-                                <select id="frequency_filter" class="form-select">
+                                <select id="frequency_filter" class="form-select" disabled>
                                     <option value="">All Frequencies</option>
                                     <option value="weekly">Weekly</option>
                                     <option value="monthly">Monthly</option>
@@ -393,7 +390,7 @@
                                 <label for="report_type" class="form-label">
                                     Report Type
                                 </label>
-                                <select id="report_type" class="form-select @error('report_type_id') is-invalid @enderror" name="report_type_id" required>
+                                <select id="report_type" class="form-select @error('report_type_id') is-invalid @enderror" name="report_type_id" required disabled>
                                     <option value="">Select Report Type</option>
                                     @foreach($reportTypes as $reportType)
                                         <option value="{{ $reportType->id }}" data-frequency="{{ $reportType->frequency }}">
@@ -418,7 +415,7 @@
                                     <div class="drop-zone__prompt">
                                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-primary"></i>
                                         <p class="mb-1">Drag and drop your file here or click to browse</p>
-                                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 2MB)</small>
+                                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 100MB)</small>
                                     </div>
                                     <input type="file" name="file" id="file" class="drop-zone__input" accept=".pdf,.doc,.docx,.xlsx" required>
                                 </div>
@@ -713,7 +710,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function validateFile(file) {
         const validTypes = ['.pdf', '.doc', '.docx', '.xlsx'];
-        const maxSize = 2 * 1024 * 1024; // 2MB
+        const maxSize = 100 * 1024 * 1024; // 100MB
 
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         if (!validTypes.includes(fileExtension)) {
@@ -722,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (file.size > maxSize) {
-            alert('File size exceeds 2MB limit.');
+            alert('File size exceeds 100MB limit.');
             return false;
         }
 
@@ -733,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dropZone.querySelector('.drop-zone__prompt').innerHTML = `
             <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-primary"></i>
             <p class="mb-1">Drag and drop your file here or click to browse</p>
-            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 2MB)</small>
+            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 100MB)</small>
         `;
     }
 
@@ -776,6 +773,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission handling
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // Prevent default submission
+
+        // Enable the report type select so its value is submitted
+        reportTypeSelect.disabled = false;
 
         // Validate file
         if (!fileInput.files.length) {

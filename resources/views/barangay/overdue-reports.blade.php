@@ -109,7 +109,7 @@
                                                         </h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
-                                                    <form action="{{ route('barangay.store-report') }}" method="POST" enctype="multipart/form-data">
+                                                    <form action="{{ route('barangay.submissions.store') }}" method="POST" enctype="multipart/form-data">
                                                         @csrf
                                                         <input type="hidden" name="report_type_id" value="{{ $report->id }}">
                                                         <div class="modal-body">

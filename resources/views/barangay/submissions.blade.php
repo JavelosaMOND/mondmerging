@@ -19,9 +19,9 @@
                             </div>
                             <select class="form-select" id="statusFilter" style="width: auto;">
                                 <option value="">All Status</option>
-                                <option value="pending">Pending</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="resubmit">Resubmit</option>
                                 <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
                             </select>
                             <select class="form-select" id="frequencyFilter" style="width: auto;">
                                 <option value="">All Frequencies</option>
@@ -61,9 +61,6 @@
                         <div class="text-center py-5">
                             <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">No reports have been submitted yet</h5>
-                            <a href="{{ route('barangay.submit-report') }}" class="btn btn-primary mt-3">
-                                <i class="fas fa-plus me-2"></i>Submit New Report
-                            </a>
                         </div>
                     @else
                         <div class="table-responsive">
@@ -79,7 +76,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($reports as $report)
+                                    @php
+                                        $sortedReports = $reports->sortByDesc('created_at');
+                                    @endphp
+                                    @foreach ($sortedReports as $report)
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -99,20 +99,54 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ $report->status === 'approved' ? 'success' : ($report->status === 'rejected' ? 'danger' : 'warning') }}">
-                                                    {{ ucfirst($report->status) }}
+                                                <span class="badge 
+                                                    @if($report->status === 'submitted') bg-success
+                                                    @elseif($report->status === 'resubmit') bg-warning
+                                                    @elseif($report->status === 'approved') bg-primary
+                                                    @else bg-secondary
+                                                    @endif
+                                                ">
+                                                    @if($report->status === 'submitted')
+                                                        Submitted
+                                                    @elseif($report->status === 'resubmit')
+                                                        Resubmit
+                                                    @elseif($report->status === 'approved')
+                                                        Approved
+                                                    @else
+                                                        {{ ucfirst($report->status) }}
+                                                    @endif
                                                 </span>
                                             </td>
                                             <td>
                                                 @if($report->remarks)
                                                     <button type="button"
                                                             class="btn btn-link btn-sm p-0 text-decoration-none"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            title="{{ $report->remarks }}">
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#remarksModal{{ $report->id }}"
+                                                            title="View Remarks">
                                                         <i class="fas fa-comment-alt text-primary"></i>
                                                         <span class="ms-1">View Remarks</span>
                                                     </button>
+                                                    <!-- Remarks Modal -->
+                                                    <div class="modal fade" id="remarksModal{{ $report->id }}" tabindex="-1" aria-labelledby="remarksModalLabel{{ $report->id }}" aria-hidden="true">
+                                                        <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title" id="remarksModalLabel{{ $report->id }}">
+                                                                        @if($report->status === 'resubmit')
+                                                                            Resubmit Remarks
+                                                                        @else
+                                                                            Remarks
+                                                                        @endif
+                                                                    </h5>
+                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                    <span class="text-danger">{{ $report->remarks }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 @else
                                                     <span class="text-muted">No remarks</span>
                                                 @endif
@@ -125,14 +159,14 @@
                                                        title="Download Report">
                                                         <i class="fas fa-download"></i>
                                                     </a>
-                                                    @if($report->status === 'rejected')
+                                                    @if($report->status === 'resubmit')
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-warning"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#resubmitModal{{ $report->id }}"
                                                                 data-bs-toggle="tooltip"
                                                                 title="Resubmit Report">
-                                                            <i class="fas fa-redo"></i>
+                                                            <i class="fas fa-redo"></i> Resubmit
                                                         </button>
                                                     @endif
                                                 </div>
@@ -148,11 +182,72 @@
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
                                                     <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <strong>Frequency:</strong>
+                                                            <span class="badge bg-info">{{ ucfirst($report->reportType->frequency) }}</span>
+                                                        </div>
                                                         <form action="{{ route('barangay.submissions.resubmit', $report->id) }}" method="POST" enctype="multipart/form-data" id="resubmitForm{{ $report->id }}">
                                                             @csrf
                                                             <input type="hidden" name="report_type_id" value="{{ $report->report_type_id }}">
                                                             <input type="hidden" name="report_type" value="{{ $report->type }}">
 
+                                                            @if($report->reportType->frequency === 'weekly')
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Month</label>
+                                                                    <select class="form-select" name="month" required>
+                                                                        @foreach(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $month)
+                                                                            <option value="{{ $month }}" {{ $report->month == $month ? 'selected' : '' }}>{{ $month }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Week Number</label>
+                                                                    <input type="number" class="form-control" name="week_number" min="1" max="52" value="{{ $report->week_number }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Number of Clean-up Sites</label>
+                                                                    <input type="number" class="form-control" name="num_of_clean_up_sites" min="0" value="{{ $report->num_of_clean_up_sites }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Number of Participants</label>
+                                                                    <input type="number" class="form-control" name="num_of_participants" min="0" value="{{ $report->num_of_participants }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Number of Barangays</label>
+                                                                    <input type="number" class="form-control" name="num_of_barangays" min="0" value="{{ $report->num_of_barangays }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Total Volume</label>
+                                                                    <input type="number" class="form-control" name="total_volume" min="0" step="0.01" value="{{ $report->total_volume }}" required>
+                                                                </div>
+                                                            @elseif($report->reportType->frequency === 'monthly')
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Month</label>
+                                                                    <select class="form-select" name="month" required>
+                                                                        @foreach(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $month)
+                                                                            <option value="{{ $month }}" {{ $report->month == $month ? 'selected' : '' }}>{{ $month }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+                                                            @elseif($report->reportType->frequency === 'quarterly')
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Quarter</label>
+                                                                    <select class="form-select" name="quarter_number" required>
+                                                                        <option value="1" {{ $report->quarter_number == 1 ? 'selected' : '' }}>First Quarter (January - March)</option>
+                                                                        <option value="2" {{ $report->quarter_number == 2 ? 'selected' : '' }}>Second Quarter (April - June)</option>
+                                                                        <option value="3" {{ $report->quarter_number == 3 ? 'selected' : '' }}>Third Quarter (July - September)</option>
+                                                                        <option value="4" {{ $report->quarter_number == 4 ? 'selected' : '' }}>Fourth Quarter (October - December)</option>
+                                                                    </select>
+                                                                </div>
+                                                            @elseif($report->reportType->frequency === 'semestral')
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Semester</label>
+                                                                    <select class="form-select" name="sem_number" required>
+                                                                        <option value="1" {{ $report->sem_number == 1 ? 'selected' : '' }}>First Semester (January - June)</option>
+                                                                        <option value="2" {{ $report->sem_number == 2 ? 'selected' : '' }}>Second Semester (July - December)</option>
+                                                                    </select>
+                                                                </div>
+                                                            @endif
                                                             <div class="mb-3">
                                                                 <label for="file" class="form-label">Upload New Report</label>
                                                                 <div class="file-upload-container" id="dropZone{{ $report->id }}">
@@ -166,14 +261,13 @@
                                                                         <p class="mt-2 text-muted small">Accepted formats: PDF, DOC, DOCX, XLSX (Max size: 2MB)</p>
                                                                         <div id="fileInfo{{ $report->id }}" class="mt-2 d-none">
                                                                             <p class="mb-0"><strong>Selected file:</strong> <span id="fileName{{ $report->id }}"></span></p>
-                                                                            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearFile({{ $report->id }})">
+                                                                            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearFile{{ $report->id }}()">
                                                                                 <i class="fas fa-times"></i> Remove
                                                                             </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
-
                                                             <div class="text-end">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                                 <button type="submit" class="btn btn-primary" id="submitBtn{{ $report->id }}">
@@ -417,144 +511,73 @@
             frequencyFilter.addEventListener('change', filterTable);
             sortBy.addEventListener('change', filterTable);
 
-            // File upload drag and drop functionality
-            document.querySelectorAll('.file-upload-container').forEach(container => {
-                const fileInput = container.querySelector('input[type="file"]');
-                const fileInfo = container.querySelector('.file-upload-container .d-none');
-                const fileName = container.querySelector('.file-upload-container .d-none span');
-
-                container.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    container.classList.add('dragover');
-                });
-
-                container.addEventListener('dragleave', () => {
-                    container.classList.remove('dragover');
-                });
-
-                container.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    container.classList.remove('dragover');
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        fileInput.files = files;
-                        updateFileInfo(files[0], fileInfo, fileName);
-                    }
-                });
-
-                fileInput.addEventListener('change', (e) => {
-                    if (e.target.files.length > 0) {
-                        updateFileInfo(e.target.files[0], fileInfo, fileName);
-                    }
-                });
-            });
-
-            function updateFileInfo(file, fileInfo, fileName) {
-                fileName.textContent = file.name;
-                fileInfo.classList.remove('d-none');
-            }
-
-            window.clearFile = function(id) {
-                const fileInput = document.getElementById('fileInput' + id);
-                const fileInfo = document.getElementById('fileInfo' + id);
-                fileInput.value = '';
-                fileInfo.classList.add('d-none');
-            };
-
-            // File upload handling for report {{ $report->id }}
-            const dropZone{{ $report->id }} = document.getElementById('dropZone{{ $report->id }}');
-            const fileInput{{ $report->id }} = document.getElementById('fileInput{{ $report->id }}');
-            const fileInfo{{ $report->id }} = document.getElementById('fileInfo{{ $report->id }}');
-            const fileName{{ $report->id }} = document.getElementById('fileName{{ $report->id }}');
-            const submitBtn{{ $report->id }} = document.getElementById('submitBtn{{ $report->id }}');
-
-            // Prevent default drag behaviors
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone{{ $report->id }}.addEventListener(eventName, preventDefaults, false);
-                document.body.addEventListener(eventName, preventDefaults, false);
-            });
-
-            // Highlight drop zone when item is dragged over it
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone{{ $report->id }}.addEventListener(eventName, highlight, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone{{ $report->id }}.addEventListener(eventName, unhighlight, false);
-            });
-
-            // Handle dropped files
-            dropZone{{ $report->id }}.addEventListener('drop', handleDrop, false);
-
-            function preventDefaults (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            function highlight(e) {
-                dropZone{{ $report->id }}.classList.add('dragover');
-            }
-
-            function unhighlight(e) {
-                dropZone{{ $report->id }}.classList.remove('dragover');
-            }
-
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                fileInput{{ $report->id }}.files = files;
-                handleFiles(files);
-            }
-
-            fileInput{{ $report->id }}.addEventListener('change', function() {
-                handleFiles(this.files);
-            });
-
-            function handleFiles(files) {
-                if (files.length > 0) {
-                    const file = files[0];
-                    const fileSize = file.size / 1024 / 1024; // in MB
-
-                    if (fileSize > 2) {
-                        alert('File size must be less than 2MB');
-                        clearFile({{ $report->id }});
-                        return;
-                    }
-
-                    const validTypes = ['.pdf', '.doc', '.docx', '.xlsx'];
-                    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-
-                    if (!validTypes.includes(fileExtension)) {
-                        alert('Invalid file type. Please upload PDF, DOC, DOCX, or XLSX files only.');
-                        clearFile({{ $report->id }});
-                        return;
-                    }
-
-                    fileName{{ $report->id }}.textContent = file.name;
-                    fileInfo{{ $report->id }}.classList.remove('d-none');
-                    submitBtn{{ $report->id }}.disabled = false;
-                }
-            }
-
-            function clearFile(id) {
-                const fileInput = document.getElementById('fileInput' + id);
-                const fileInfo = document.getElementById('fileInfo' + id);
-                const submitBtn = document.getElementById('submitBtn' + id);
-
-                fileInput.value = '';
-                fileInfo.classList.add('d-none');
-                submitBtn.disabled = true;
-            }
-
-            // Form submission handling
-            document.getElementById('resubmitForm{{ $report->id }}').addEventListener('submit', function(e) {
+            // File upload drag and drop functionality and per-report JS
+            @foreach ($reports as $report)
+            (function() {
+                const dropZone = document.getElementById('dropZone{{ $report->id }}');
                 const fileInput = document.getElementById('fileInput{{ $report->id }}');
-                if (!fileInput.files.length) {
+                const fileInfo = document.getElementById('fileInfo{{ $report->id }}');
+                const fileName = document.getElementById('fileName{{ $report->id }}');
+                const submitBtn = document.getElementById('submitBtn{{ $report->id }}');
+
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                    document.body.addEventListener(eventName, preventDefaults, false);
+                });
+                function preventDefaults (e) {
                     e.preventDefault();
-                    alert('Please select a file to upload');
+                    e.stopPropagation();
                 }
-            });
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+                });
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+                });
+                dropZone.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    fileInput.files = files;
+                    handleFiles(files);
+                }, false);
+                fileInput.addEventListener('change', function() {
+                    handleFiles(this.files);
+                });
+                function handleFiles(files) {
+                    if (files.length > 0) {
+                        const file = files[0];
+                        const fileSize = file.size / 1024 / 1024; // in MB
+                        if (fileSize > 2) {
+                            alert('File size must be less than 2MB');
+                            clearFile();
+                            return;
+                        }
+                        const validTypes = ['.pdf', '.doc', '.docx', '.xlsx'];
+                        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                        if (!validTypes.includes(fileExtension)) {
+                            alert('Invalid file type. Please upload PDF, DOC, DOCX, or XLSX files only.');
+                            clearFile();
+                            return;
+                        }
+                        fileName.textContent = file.name;
+                        fileInfo.classList.remove('d-none');
+                        submitBtn.disabled = false;
+                    }
+                }
+                window['clearFile{{ $report->id }}'] = function() {
+                    fileInput.value = '';
+                    fileInfo.classList.add('d-none');
+                    submitBtn.disabled = true;
+                };
+                document.getElementById('resubmitForm{{ $report->id }}').addEventListener('submit', function(e) {
+                    if (!fileInput.files.length) {
+                        e.preventDefault();
+                        alert('Please select a file to upload');
+                    }
+                });
+            })();
+            @endforeach
         });
     </script>
     @endpush
-@endsection
+@endsection 

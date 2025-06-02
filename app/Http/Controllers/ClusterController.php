@@ -13,7 +13,7 @@ class ClusterController extends Controller
 {
     public function __construct()
     {
-        if (!Auth::check() || Auth::user()->role !== 'cluster') {
+        if (!Auth::check() || !in_array(Auth::user()->role, ['Facilitator', 'cluster'])) {
             abort(403, 'Unauthorized access.');
         }
     }
@@ -26,11 +26,14 @@ class ClusterController extends Controller
     public function dashboard()
     {
         $clusterId = Auth::id();
+        $cluster = User::find($clusterId);
 
-        // Get assigned barangays
-        $barangays = User::where('cluster_id', $clusterId)
-            ->where('role', 'barangay')
-            ->get();
+        // Get barangays assigned to this cluster
+        $barangays = $cluster->barangays;
+        // If this cluster has a parent, also get barangays from the parent
+        if ($cluster->parentCluster) {
+            $barangays = $barangays->merge($cluster->parentCluster->barangays);
+        }
 
         // Get total number of barangays
         $barangayCount = $barangays->count();
@@ -125,6 +128,20 @@ class ClusterController extends Controller
             $submission->is_late = $submission->created_at->gt($submission->reportType->deadline);
         });
 
+        if (auth()->user()->role === 'Facilitator') {
+            return view('cluster.dashboard_facilitator', compact(
+                'barangays',
+                'barangayCount',
+                'reportCount',
+                'pendingCount',
+                'overdueCount',
+                'recentSubmissions',
+                'weeklyCount',
+                'monthlyCount',
+                'quarterlyCount',
+                'annualCount'
+            ));
+        }
         return view('cluster.dashboard', compact(
             'barangays',
             'barangayCount',
@@ -183,9 +200,13 @@ class ClusterController extends Controller
 
     public function reports()
     {
-        $barangayIds = User::where('cluster_id', Auth::id())
-            ->where('role', 'barangay')
-            ->pluck('id');
+        $clusterId = Auth::id();
+        $cluster = User::find($clusterId);
+        $barangays = $cluster->barangays;
+        if ($cluster->parentCluster) {
+            $barangays = $barangays->merge($cluster->parentCluster->barangays);
+        }
+        $barangayIds = $barangays->pluck('id');
 
         $weeklyReports = WeeklyReport::with(['user', 'reportType'])
             ->whereIn('user_id', $barangayIds)
@@ -210,7 +231,12 @@ class ClusterController extends Controller
             ->concat($annualReports)
             ->sortByDesc('created_at');
 
+        // Use different views for cluster and facilitator
+        if (auth()->user()->role === 'Facilitator') {
+            return view('cluster.reports', compact('reports'));
+        } else {
         return view('cluster.reports', compact('reports'));
+        }
     }
 
     public function showReport($id)
@@ -220,6 +246,7 @@ class ClusterController extends Controller
             'weekly' => WeeklyReport::class,
             'monthly' => MonthlyReport::class,
             'quarterly' => QuarterlyReport::class,
+            'semestral' => SemestralReport::class,
             'annual' => AnnualReport::class
         ];
 
@@ -227,7 +254,6 @@ class ClusterController extends Controller
             $foundReport = $model::with(['user', 'reportType'])
                 ->where('id', $id)
                 ->first();
-
             if ($foundReport) {
                 $report = $foundReport;
                 break;
@@ -238,13 +264,22 @@ class ClusterController extends Controller
             abort(404, 'Report not found');
         }
 
-        // Verify that the report belongs to a barangay in this cluster
-        $barangay = User::where('cluster_id', Auth::id())
-            ->where('role', 'barangay')
-            ->where('id', $report->user_id)
-            ->first();
-
-        if (!$barangay) {
+        // Improved authorization check
+        $cluster = User::find(Auth::id());
+        $barangayIds = $cluster->barangays->pluck('id');
+        if ($cluster->parentCluster) {
+            $barangayIds = $barangayIds->merge($cluster->parentCluster->barangays->pluck('id'));
+        }
+        // Debug log for authorization
+        \Log::info('[ClusterController] Authorization debug', [
+            'cluster_id' => $cluster->id,
+            'cluster_role' => $cluster->role,
+            'barangayIds' => $barangayIds->toArray(),
+            'report_user_id' => $report->user_id,
+            'report_id' => $report->id,
+            'report_type' => get_class($report),
+        ]);
+        if (!$barangayIds->contains($report->user_id)) {
             abort(403, 'Unauthorized access to this report');
         }
 
@@ -254,7 +289,7 @@ class ClusterController extends Controller
     public function updateReport(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:pending,approved,rejected',
+            'status' => 'required|in:pending,approved,resubmit',
             'remarks' => 'nullable|string|max:1000'
         ]);
 
@@ -263,6 +298,7 @@ class ClusterController extends Controller
             'weekly' => WeeklyReport::class,
             'monthly' => MonthlyReport::class,
             'quarterly' => QuarterlyReport::class,
+            'semestral' => SemestralReport::class,
             'annual' => AnnualReport::class
         ];
 
@@ -278,20 +314,26 @@ class ClusterController extends Controller
             return back()->with('error', 'Report not found');
         }
 
-        // Verify that the report belongs to a barangay in this cluster
-        $barangay = User::where('cluster_id', Auth::id())
-            ->where('role', 'barangay')
-            ->where('id', $report->user_id)
-            ->first();
-
-        if (!$barangay) {
+        // Improved authorization check
+        $cluster = User::find(Auth::id());
+        $barangayIds = $cluster->barangays->pluck('id');
+        if ($cluster->parentCluster) {
+            $barangayIds = $barangayIds->merge($cluster->parentCluster->barangays->pluck('id'));
+        }
+        if (!$barangayIds->contains($report->user_id)) {
             abort(403, 'Unauthorized access to this report');
         }
 
-        $report->update([
+        // Prepare update data
+        $updateData = [
             'status' => $request->status,
             'remarks' => $request->remarks
-        ]);
+        ];
+
+        // Remove frequency-specific validation and update logic for resubmit
+        // Now, only status and remarks are updated for any report type
+
+        $report->update($updateData);
 
         return back()->with('success', 'Report status updated successfully');
     }
@@ -304,6 +346,7 @@ class ClusterController extends Controller
                 'weekly' => WeeklyReport::class,
                 'monthly' => MonthlyReport::class,
                 'quarterly' => QuarterlyReport::class,
+                'semestral' => SemestralReport::class,
                 'annual' => AnnualReport::class
             ];
 
@@ -319,13 +362,13 @@ class ClusterController extends Controller
                 return back()->with('error', 'Report not found');
             }
 
-            // Verify that the report belongs to a barangay in this cluster
-            $barangay = User::where('cluster_id', Auth::id())
-                ->where('role', 'barangay')
-                ->where('id', $report->user_id)
-                ->first();
-
-            if (!$barangay) {
+            // Improved authorization check
+            $cluster = User::find(Auth::id());
+            $barangayIds = $cluster->barangays->pluck('id');
+            if ($cluster->parentCluster) {
+                $barangayIds = $barangayIds->merge($cluster->parentCluster->barangays->pluck('id'));
+            }
+            if (!$barangayIds->contains($report->user_id)) {
                 abort(403, 'Unauthorized access to this file');
             }
 
@@ -350,6 +393,7 @@ class ClusterController extends Controller
                 'weekly' => WeeklyReport::class,
                 'monthly' => MonthlyReport::class,
                 'quarterly' => QuarterlyReport::class,
+                'semestral' => SemestralReport::class,
                 'annual' => AnnualReport::class
             ];
 
@@ -365,13 +409,13 @@ class ClusterController extends Controller
                 return back()->with('error', 'Report not found');
             }
 
-            // Verify that the report belongs to a barangay in this cluster
-            $barangay = User::where('cluster_id', Auth::id())
-                ->where('role', 'barangay')
-                ->where('id', $report->user_id)
-                ->first();
-
-            if (!$barangay) {
+            // Improved authorization check
+            $cluster = User::find(Auth::id());
+            $barangayIds = $cluster->barangays->pluck('id');
+            if ($cluster->parentCluster) {
+                $barangayIds = $barangayIds->merge($cluster->parentCluster->barangays->pluck('id'));
+            }
+            if (!$barangayIds->contains($report->user_id)) {
                 abort(403, 'Unauthorized access to this file');
             }
 
@@ -430,5 +474,17 @@ class ClusterController extends Controller
         $reportType = \App\Models\ReportType::findOrFail($id);
         $reportType->delete();
         return redirect()->route('cluster.report-types')->with('success', 'Report type deleted successfully.');
+    }
+
+    public function showCluster($id)
+    {
+        $cluster = User::where('role', 'cluster')->findOrFail($id);
+        // Get direct barangays
+        $barangays = $cluster->barangays;
+        // Get barangays under child clusters
+        foreach ($cluster->childClusters as $child) {
+            $barangays = $barangays->merge($child->barangays);
+        }
+        return view('cluster.show', compact('cluster', 'barangays'));
     }
 } 

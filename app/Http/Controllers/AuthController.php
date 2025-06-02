@@ -26,7 +26,7 @@ class AuthController extends Controller
             // Redirect based on user role
             return match ($user->role) {
                 'admin' => redirect()->route('admin.dashboard'),
-                'cluster' => redirect()->route('cluster.index'),
+                'Facilitator' => redirect()->route('facilitator.dashboard'),
                 'barangay' => redirect()->route('barangay.dashboard'),
                 default => redirect()->route('login')->with('error', 'Unauthorized'),
             };
